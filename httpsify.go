@@ -73,6 +73,7 @@ func main() {
 				}
 			}
 		}
+		req.Host = r.Host
 		req.Header.Set("Host", r.Host)
 		req.Header.Set("X-Real-IP", ip)
 		req.Header.Set("X-Forwarded-For", ip)
