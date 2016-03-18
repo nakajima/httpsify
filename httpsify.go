@@ -66,7 +66,6 @@ func main() {
 			http.Error(w, http.StatusText(504), 504)
 			return
 		}
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 		for k, v := range r.Header {
 			for i := 0; i < len(v); i ++ {
 				if i == 0 {
@@ -76,10 +75,13 @@ func main() {
 				}
 			}
 		}
+		uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
 		req.Host = r.Host
 		req.Header.Set("Host", r.Host)
-		req.Header.Set("X-Real-IP", ip)
-		req.Header.Set("X-Forwarded-For", ip)
+		req.Header.Set("X-Real-IP", uip)
+		req.Header.Set("X-Remote-IP", uip)
+		req.Header.Set("X-Remote-Port", uport)
+		req.Header.Set("X-Forwarded-For", uip)
 		req.Header.Set("X-Forwarded-Proto", "https")
 		req.Header.Set("X-Forwarded-Host", r.Host)
 		req.Header.Set("X-Forwarded-Port", *port)
