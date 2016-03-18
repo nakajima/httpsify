@@ -14,12 +14,15 @@ import (
 
 // --------------
 
+const VERSION = "httpsify/v1.0"
+
 var (
 	port	*string		=	flag.String("port", "443", "the port that will serve the https requests")
 	cert	*string 	=	flag.String("cert", "./cert.pem", "the cert.pem save-path")
 	key		*string 	=	flag.String("key", "./key.pem", "the key.pem save-path")
 	domains	*string 	=	flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
 	backend	*string 	=	flag.String("backend", "", "the backend http server that will serve the terminated requests")
+	info 	*string 	=	flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
 )
 
 // --------------
@@ -70,6 +73,7 @@ func main() {
 				}
 			}
 		}
+		req.Header.Set("Host", r.Host)
 		req.Header.Set("X-Real-IP", ip)
 		req.Header.Set("X-Forwarded-For", ip)
 		req.Header.Set("X-Forwarded-Proto", "https")
@@ -89,6 +93,9 @@ func main() {
 					w.Header().Add(k, v[i])
 				}
 			}
+		}
+		if *info == "yes" {
+			w.Header().Set("Server", VERSION)
 		}
 		w.WriteHeader(res.StatusCode)
 		io.Copy(w, res.Body)
