@@ -1,3 +1,6 @@
+// httpsify is a transparent blazing fast https offloader with auto certificates renewal .
+// this software is published under MIT License .
+// by Mohammed Al ashaal <alash3al.xyz> with the help of those opensource libraries [github.com/xenolf/lego, github.com/dkumor/acmewrapper] .
 package main
 
 import (
@@ -14,7 +17,7 @@ import (
 
 // --------------
 
-const VERSION = "httpsify/v1.0"
+const VERSION = "httpsify/v1"
 
 var (
 	port	*string		=	flag.String("port", "443", "the port that will serve the https requests")
