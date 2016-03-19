@@ -28,6 +28,8 @@ a transparent HTTPS terminator for letsencrypt with auto certificates renewal, y
 # this will run a httpsify instance listening on port 443 and passing the incoming requests to http://localhost
 # and building valid signed cerificates for the specified domains [they must be valid domain names]
 ./httpsify --backend=http://localhost --domains="domain.tld,www.domain.tld,another.domain.tld"
+# this command will tell you more ...
+./httpsify --help
 ```
 
 # Author
