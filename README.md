@@ -1,5 +1,15 @@
 # Intro
-a transparent HTTPS termination proxy using letsencrypt with auto certification renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/)
+a transparent HTTPS termination proxy using letsencrypt with auto certification renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/),
+
+# How it works ?
+httpsify is a https reverse proxy ...   
+[https request] --> httpsify --> [apache/nginx/nodejs/... etc]  
+but this isn't the point because there are many https offloaders,   
+but httpsify uses letsencrypt (https://letsencrypt.org/)   
+for automatically generating free and valid ssl certificates, as well as auto renewal of certs,   
+this web server by default uses HTTP/2 .   
+you can say that httpsify is just a http/2 & letsencrypt wrapper for any http web server with no hassle, it just works .  
+
 
 # Features
 * SSL Offloader .
