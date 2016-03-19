@@ -1,5 +1,5 @@
 # Intro
-a transparent HTTPS terminator for letsencrypt with auto certificates renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/)
+a transparent HTTPS terminator for letsencrypt with auto certification renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/)
 
 # Features
 * SSL Offloader .
