@@ -14,7 +14,7 @@ a transparent HTTPS terminator for letsencrypt with auto certificates renewal, y
 * Passes `X-Forwarded-*` headers, `X-Real-IP` header and `X-Remote-IP`/`X-Remote-Port` to the backend server .
 
 # Installation
-> Currently the only available binaries are built for `linux` `386/amd64` and you can download them from [here]() .  
+> Currently the only available binaries are built for `linux` `386/amd64` and you can download them from [here](https://github.com/alash3al/httpsify/releases) .  
 > Building from source :  
 --  MAke sure you have `Golang` installed .  
 --  `go get github.com/alash3al/httpsify`.  
