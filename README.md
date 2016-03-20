@@ -1,5 +1,6 @@
+
 # Intro
-a transparent HTTPS termination proxy using letsencrypt with auto certification renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/),
+a transparent HTTPS terminator for letsencrypt with auto certification renewal, you may need to read more about LetsEncrypt from [here](https://letsencrypt.org/)
 
 # How it works ?
 httpsify is a https reverse proxy ...   
@@ -10,7 +11,6 @@ for automatically generating free and valid ssl certificates, as well as auto re
 this web server by default uses HTTP/2 .   
 you can say that httpsify is just a http/2 & letsencrypt wrapper for any http web server with no hassle, it just works .  
 
-
 # Features
 * SSL Offloader .
 * HTTP/2 support .
@@ -20,16 +20,17 @@ you can say that httpsify is just a http/2 & letsencrypt wrapper for any http we
 * Very light .
 * Portable and small `~ 2 MB`
 * No system requirements .
-* No configurations required, just `httpsify --backend=http://127.0.0.1`
+* No configurations required, just `httpsify --domains="domain.com,www.domain.com,sub.domain.com"`
 * Passes `X-Forwarded-*` headers, `X-Real-IP` header and `X-Remote-IP`/`X-Remote-Port` to the backend server .
 
 # Installation
 > Currently the only available binaries are built for `linux` `386/amd64` and you can download them from [here](https://github.com/alash3al/httpsify/releases) .  
-> Building from source :  
---  MAke sure you have `Golang` installed .  
---  `go get github.com/alash3al/httpsify`.  
---  `go install github.com/alash3al/httpsify`.  
---  make sure that `$GOPATH/bin` in your `$PATH` .
+
+# Building from source :  
+* Make sure you have `Golang` installed .  
+* `go get github.com/alash3al/httpsify`.  
+* `go install github.com/alash3al/httpsify`.  
+*  make sure that `$GOPATH/bin` in your `$PATH` .
 
 # Quick Usage
 > lets say that you have extracted/built httpsify in the current working directory .  
@@ -37,10 +38,14 @@ you can say that httpsify is just a http/2 & letsencrypt wrapper for any http we
 # this is the simplest way to run httpsify
 # this will run a httpsify instance listening on port 443 and passing the incoming requests to http://localhost
 # and building valid signed cerificates for the specified domains [they must be valid domain names]
-./httpsify --backend=http://localhost --domains="domain.tld,www.domain.tld,another.domain.tld"
-# this command will tell you more ...
-./httpsify --help
+./httpsify --domains="domain.tld,www.domain.tld,another.domain.tld"
 ```
 
 # Author
 I'm [Mohammed Al Ashaal](https://www.alash3al.xyz)
+
+# Thanks 
+I must thank the following awesome libraries 
+
+* [github.com/xenolf/lego](https://github.com/xenolf/lego)
+* [github.com/dkumor/acmewrapper](github.com/dkumor/acmewrapper)
