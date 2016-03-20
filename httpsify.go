@@ -24,7 +24,7 @@ var (
 	cert	*string 	=	flag.String("cert", "./cert.pem", "the cert.pem save-path")
 	key		*string 	=	flag.String("key", "./key.pem", "the key.pem save-path")
 	domains	*string 	=	flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
-	backend	*string 	=	flag.String("backend", "", "the backend http server that will serve the terminated requests")
+	backend	*string 	=	flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
 	info 	*string 	=	flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
 )
 
