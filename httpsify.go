@@ -35,9 +35,6 @@ func init() {
 	if ( *domains == "" ) {
 		log.Fatal("err> Please enter your site(s) domain(s)")
 	}
-	if ( *backend == "" ) {
-		log.Fatal("err> Please enter the backend http server")
-	}
 }
 
 // --------------
