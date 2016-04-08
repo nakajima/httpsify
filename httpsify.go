@@ -4,15 +4,15 @@
 package main
 
 import (
-	"io"
-	"net"
-	"log"
-	"flag"
-	"strings"
-	"net/http"
 	"crypto/tls"
-	"path/filepath"
+	"flag"
 	"github.com/dkumor/acmewrapper"
+	"io"
+	"log"
+	"net"
+	"net/http"
+	"path/filepath"
+	"strings"
 )
 
 // --------------
@@ -20,19 +20,19 @@ import (
 const VERSION = "httpsify/v1"
 
 var (
-	port	*string		=	flag.String("port", "443", "the port that will serve the https requests")
-	cert	*string 	=	flag.String("cert", "./cert.pem", "the cert.pem save-path")
-	key	*string 	=	flag.String("key", "./key.pem", "the key.pem save-path")
-	domains	*string 	=	flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
-	backend	*string 	=	flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
-	info 	*string 	=	flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
+	port    *string = flag.String("port", "443", "the port that will serve the https requests")
+	cert    *string = flag.String("cert", "./cert.pem", "the cert.pem save-path")
+	key     *string = flag.String("key", "./key.pem", "the key.pem save-path")
+	domains *string = flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
+	backend *string = flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
+	info    *string = flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
 )
 
 // --------------
 
 func init() {
 	flag.Parse()
-	if ( *domains == "" ) {
+	if *domains == "" {
 		log.Fatal("err> Please enter your site(s) domain(s)")
 	}
 }
@@ -41,22 +41,22 @@ func init() {
 
 func main() {
 	acme, err := acmewrapper.New(acmewrapper.Config{
-	    Domains: strings.Split(*domains, ","),
-	    Address: ":" + *port,
-	    TLSCertFile: *cert,
-	    TLSKeyFile:  *key,
-	    RegistrationFile: filepath.Dir(*cert) + "/lets-encrypt-user.reg",
-	    PrivateKeyFile:   filepath.Dir(*cert) + "/lets-encrypt-user.pem",
-	    TOSCallback: acmewrapper.TOSAgree,
+		Domains:          strings.Split(*domains, ","),
+		Address:          ":" + *port,
+		TLSCertFile:      *cert,
+		TLSKeyFile:       *key,
+		RegistrationFile: filepath.Dir(*cert) + "/lets-encrypt-user.reg",
+		PrivateKeyFile:   filepath.Dir(*cert) + "/lets-encrypt-user.pem",
+		TOSCallback:      acmewrapper.TOSAgree,
 	})
-	if err!=nil {
-	    log.Fatal("err> "+ err.Error())
-	}
-	listener, err := tls.Listen("tcp", ":" + *port, acme.TLSConfig())
 	if err != nil {
 		log.Fatal("err> " + err.Error())
 	}
-	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
+	listener, err := tls.Listen("tcp", ":"+*port, acme.TLSConfig())
+	if err != nil {
+		log.Fatal("err> " + err.Error())
+	}
+	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		req, err := http.NewRequest(r.Method, *backend, r.Body)
 		if err != nil {
@@ -64,7 +64,7 @@ func main() {
 			return
 		}
 		for k, v := range r.Header {
-			for i := 0; i < len(v); i ++ {
+			for i := 0; i < len(v); i++ {
 				if i == 0 {
 					req.Header.Set(k, v[i])
 				} else {
@@ -89,7 +89,7 @@ func main() {
 		}
 		defer res.Body.Close()
 		for k, v := range res.Header {
-			for i := 0; i < len(v); i ++ {
+			for i := 0; i < len(v); i++ {
 				if i == 0 {
 					w.Header().Set(k, v[i])
 				} else {
