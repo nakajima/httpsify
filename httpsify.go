@@ -58,7 +58,7 @@ func main() {
 	}
 	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		req, err := http.NewRequest(r.Method, *backend, r.Body)
+		req, err := http.NewRequest(r.Method, *backend + r.URL.Path, r.Body)
 		if err != nil {
 			http.Error(w, http.StatusText(504), 504)
 			return
