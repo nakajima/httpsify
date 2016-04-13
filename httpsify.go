@@ -17,7 +17,7 @@ import (
 
 // --------------
 
-const VERSION = "httpsify/v1"
+const version = "httpsify/v1"
 
 var (
 	port    = flag.String("port", "443", "the port that will serve the https requests")
@@ -63,13 +63,9 @@ func main() {
 			http.Error(w, http.StatusText(504), 504)
 			return
 		}
-		for k, v := range r.Header {
-			for i := 0; i < len(v); i++ {
-				if i == 0 {
-					req.Header.Set(k, v[i])
-				} else {
-					req.Header.Add(k, v[i])
-				}
+		for k, vs := range r.Header {
+			for _, v := range vs {
+				req.Header.Add(k, v)
 			}
 		}
 		uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
@@ -88,17 +84,13 @@ func main() {
 			return
 		}
 		defer res.Body.Close()
-		for k, v := range res.Header {
-			for i := 0; i < len(v); i++ {
-				if i == 0 {
-					w.Header().Set(k, v[i])
-				} else {
-					w.Header().Add(k, v[i])
-				}
+		for k, vs := range res.Header {
+			for _, v := range vs {
+				w.Header().Add(k, v)
 			}
 		}
 		if *info == "yes" {
-			w.Header().Set("Server", VERSION)
+			w.Header().Set("Server", version)
 		}
 		w.WriteHeader(res.StatusCode)
 		io.Copy(w, res.Body)
