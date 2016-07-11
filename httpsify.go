@@ -78,7 +78,9 @@ func main() {
 		req.Header.Set("X-Forwarded-Proto", "https")
 		req.Header.Set("X-Forwarded-Host", r.Host)
 		req.Header.Set("X-Forwarded-Port", *port)
-		req.URL = r.URL
+		req.URL.Path = r.URL.Path
+		req.URL.RawQuery = r.URL.RawQuery
+		req.Fragment = r.Fragment
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			http.Error(w, http.StatusText(504), 504)
