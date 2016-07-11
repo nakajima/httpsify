@@ -78,6 +78,7 @@ func main() {
 		req.Header.Set("X-Forwarded-Proto", "https")
 		req.Header.Set("X-Forwarded-Host", r.Host)
 		req.Header.Set("X-Forwarded-Port", *port)
+		req.URL = r.URL
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			http.Error(w, http.StatusText(504), 504)
