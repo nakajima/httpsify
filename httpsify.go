@@ -80,7 +80,7 @@ func main() {
 		req.Header.Set("X-Forwarded-Port", *port)
 		req.URL.Path = r.URL.Path
 		req.URL.RawQuery = r.URL.RawQuery
-		req.Fragment = r.Fragment
+		req.URL.Fragment = r.URL.Fragment
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
 			http.Error(w, http.StatusText(504), 504)
