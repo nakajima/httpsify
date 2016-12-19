@@ -11,13 +11,19 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/scottjg/go-nat"
 )
 
 // --------------
 
-const version = "httpsify/v1"
+const version = "httpsify/holepuncher/v1"
 
 var (
 	port    = flag.String("port", "443", "the port that will serve the https requests")
@@ -26,6 +32,7 @@ var (
 	domains = flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
 	backend = flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
 	info    = flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
+	natfwd  = flag.Bool("natfwd", false, "automatically setup a port forwarding rule on the upstream NAT router")
 )
 
 // --------------
@@ -40,6 +47,45 @@ func init() {
 // --------------
 
 func main() {
+	portNum, err := strconv.Atoi(*port)
+	if err != nil {
+		log.Fatalf("bogus port: %s", err)
+	}
+
+	if *natfwd {
+		gw, err := nat.DiscoverGateway()
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+
+		err = gw.AddPortMapping("tcp", portNum, 443, "https", 60*time.Second)
+		if err != nil {
+			log.Fatalf("error: %s", err)
+		}
+
+		// unmap the port if you ctrl-C or if we finish running main()
+		defer gw.DeletePortMapping("tcp", portNum, 443)
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for _ = range c {
+				gw.DeletePortMapping("tcp", portNum, 443)
+				os.Exit(1)
+			}
+		}()
+
+		go func() {
+			for {
+				time.Sleep(30 * time.Second)
+
+				err = gw.AddPortMapping("tcp", portNum, 443, "https", 60*time.Second)
+				if err != nil {
+					log.Fatalf("error: %s", err)
+				}
+			}
+		}()
+	}
+
 	acme, err := acmewrapper.New(acmewrapper.Config{
 		Domains:          strings.Split(*domains, ","),
 		Address:          ":" + *port,
@@ -58,7 +104,7 @@ func main() {
 	}
 	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		req, err := http.NewRequest(r.Method, *backend + r.URL.RequestURI(), r.Body)
+		req, err := http.NewRequest(r.Method, *backend+r.URL.RequestURI(), r.Body)
 		if err != nil {
 			http.Error(w, http.StatusText(504), 504)
 			return
