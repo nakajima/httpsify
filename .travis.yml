@@ -1,10 +1,34 @@
-language: go
-
+language: bash
 env:
-  - GOOS=windows GOARCH=386
-  - GOOS=windows GOARCH=amd64
-  - GOOS=linux   GOARCH=386
-  - GOOS=linux   GOARCH=amd64
-  - GOOS=darwin  GOARCH=386
-  - GOOS=darwin GOARCH=amd64
+  matrix:
+    - GOOS=windows GOARCH=386
+    - GOOS=windows GOARCH=amd64
+    - GOOS=linux   GOARCH=386
+    - GOOS=linux   GOARCH=amd64
+    - GOOS=linux   GOARCH=arm
+    - GOOS=darwin  GOARCH=amd64
 
+script:
+  - cd ..
+  - curl  https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz |tar zxf -
+  - export GOROOT=`pwd`/go
+  - export PATH=`pwd`/go/bin:$PATH
+  - mkdir -p gopath/src/github.com/scottjg
+  - export GOPATH=`pwd`/gopath
+  - mv httpsify gopath/src/github.com/scottjg/
+  - cd gopath/src/github.com/scottjg/httpsify/
+  - go get -v
+  - go build -v
+  - zip httpsify-${GOOS}-${GOARCH}.zip httpsify{,.exe}
+
+
+deploy:
+  provider: releases
+  api_key:
+    secure: jH8TGNkOe8lVLl/H1mvBZRaN5Hi1iRotqtVOa6Gs4MPUaRwIYnJB3XsxeX+M5or1nWXIpJQkhxRCpcWGdzCmI1SREkfOYQB7EK7XVsqUYkQgwAE5ZYdEZD/oj12Anav42zErbibJYZTJ1bFOYHYJZoaM2wSoWKPvw2aIQvOMJVFlHAdtvp8QYZ7j+qAjRP4kXGZk40SO4cySCo1kADjpUAQS8MLK45YOc6ybe6/X464dlYkdRcABAng+dALbSnyR6YXn2CFsXNfRXRTmt64DtEibvKibeJnfLL2wZf0Xf1zGs1KnpbiSY6Sy3pHprxUStSh9IVS8I13ssS7GBMicsEVhs+yC4nwReggwB0riNDrYuw81zwWYuOHeL7zthhtpTuBiypGG6QYF6hS2jNfXV9lLtcP0O55CZyC+jDUoX029Irp5l077teTGarJJSqzGOokS193p6XUHUvdaYJp1HSGM0nfkMn8JBkk9I5b/WVMEIl1gdJ+dacsBj3OtE8/X8ioQXdMR4L5lsnGT7qBK0vanLV715bnCc9OTexRaiCMBdgu2KYI9gu/KsIQvjl/jZGgWE3c5f/RlWdw/+WHqw+0dKYOnln1OMDU6r+Dpaz200ArxK5UQgNyZDaaBrghT9DP13ds1WWzcwA1Zq6hIlV8XUdXMoz+T7GxcL9ESJpA=
+  file_glob: true
+  skip_cleanup: true
+  file: httpsify-*.zip
+  on:
+    repo: scottjg/httpsify
+    tags: true

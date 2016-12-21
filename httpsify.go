@@ -63,7 +63,9 @@ func main() {
 			log.Fatalf("error: %s", err)
 		}
 
-		// unmap the port if you ctrl-C or if we finish running main()
+		// unmap the port if you ctrl-C or if we finish running main().
+		// in other situations, we may leak the mapping, but it will expire
+		// after a minute, so it could be worse.
 		defer gw.DeletePortMapping("tcp", portNum, 443)
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
