@@ -1,26 +1,22 @@
-language: bash
+language: go
+
 env:
   matrix:
-    - GOOS=windows GOARCH=386
-    - GOOS=windows GOARCH=amd64
-    - GOOS=linux   GOARCH=386
-    - GOOS=linux   GOARCH=amd64
-    - GOOS=linux   GOARCH=arm
-    - GOOS=darwin  GOARCH=amd64
+    - _GOOS=windows _GOARCH=386
+    - _GOOS=windows _GOARCH=amd64
+    - _GOOS=linux   _GOARCH=386
+    - _GOOS=linux   _GOARCH=amd64
+    - _GOOS=linux   _GOARCH=arm
+    - _GOOS=darwin  _GOARCH=amd64
 
 script:
-  - cd ..
-  - curl  https://storage.googleapis.com/golang/go1.7.4.linux-amd64.tar.gz |tar zxf -
-  - export GOROOT=`pwd`/go
-  - export PATH=`pwd`/go/bin:$PATH
-  - mkdir -p gopath/src/github.com/scottjg
-  - export GOPATH=`pwd`/gopath
-  - mv httpsify gopath/src/github.com/scottjg/
-  - cd gopath/src/github.com/scottjg/httpsify/
+  - export GOOS=${_GOOS}
+  - export GOARCH=${_GOARCH}
   - go get -v
   - go build -v
-  - zip httpsify-${GOOS}-${GOARCH}.zip httpsify{,.exe}
 
+before_deploy:
+  - zip httpsify-${GOOS}-${GOARCH}.zip httpsify{,.exe}
 
 deploy:
   provider: releases
