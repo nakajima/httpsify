@@ -27,22 +27,27 @@ import (
 const version = "httpsify/holepuncher/v1"
 
 var (
-	port    = flag.String("port", "443", "the port that will serve the https requests")
-	cert    = flag.String("cert", "./cert.pem", "the cert.pem save-path")
-	key     = flag.String("key", "./key.pem", "the key.pem save-path")
-	domains = flag.String("domains", "", "a comma separated list of your site(s) domain(s)")
-	backend = flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
-	info    = flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
-	natfwd  = flag.Bool("natfwd", false, "automatically setup a port forwarding rule on the upstream NAT router")
+	port       = flag.String("port", "4443", "the port that will serve the https requests")
+	ddns       = flag.String("ddns", "", "specify provider (e.g. namecheap or iwantmyname) or update url")
+	cert       = flag.String("cert", "./cert.pem", "the cert.pem save-path")
+	key        = flag.String("key", "./key.pem", "the key.pem save-path")
+	backend    = flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
+	info       = flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
+	skipnatfwd = flag.Bool("skipnatfwd", false, "don't automatically setup a port forwarding rule on the upstream NAT router")
 )
 
 // --------------
 
+var domain = ""
+
 func init() {
 	flag.Parse()
-	if *domains == "" {
-		log.Fatal("err> Please enter your site(s) domain(s)")
+	args := flag.Args()
+	if len(args) < 1 {
+		log.Fatalf("need to specify a domain name")
 	}
+
+	domain = args[0]
 }
 
 // --------------
@@ -58,12 +63,13 @@ func main() {
 		log.Fatalf("bogus backend url: %s", err)
 	}
 
-	if *natfwd {
+	if !*skipnatfwd {
 		gw, err := nat.DiscoverGateway()
 		if err != nil {
 			log.Fatalf("error: %s", err)
 		}
 
+		gw.DeletePortMapping("tcp", portNum, 443)
 		err = gw.AddPortMapping("tcp", portNum, 443, "https", 60*time.Second)
 		if err != nil {
 			log.Fatalf("error: %s", err)
@@ -72,7 +78,6 @@ func main() {
 		// unmap the port if you ctrl-C or if we finish running main().
 		// in other situations, we may leak the mapping, but it will expire
 		// after a minute, so it could be worse.
-		defer gw.DeletePortMapping("tcp", portNum, 443)
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		go func() {
@@ -94,8 +99,80 @@ func main() {
 		}()
 	}
 
+	if *ddns != "" {
+		updateUrl := ""
+		dnsUsername := os.Getenv("DNS_USERNAME")
+		dnsPassword := os.Getenv("DNS_PASSWORD")
+
+		var req *http.Request
+		switch *ddns {
+		case "namecheap":
+			if dnsPassword == "" {
+				log.Fatalf("Need to define DNS_PASSWORD in your environment")
+			}
+
+			domainLevels := strings.Split(domain, ".")
+			host := "@"
+			sld := domain
+			if len(domainLevels) > 2 {
+				host = strings.Join(domainLevels[0:(len(domainLevels)-2)], ".")
+				sld = strings.Join(domainLevels[(len(domainLevels)-2):len(domainLevels)], ".")
+			}
+			updateUrl = "https://dynamicdns.park-your-domain.com/update?host=" + host + "&domain=" + sld + "&password=" + dnsPassword
+			req, err = http.NewRequest("GET", updateUrl, nil)
+			break
+		case "iwantmyname":
+			if dnsPassword == "" || dnsUsername == "" {
+				log.Fatalf("Need to define DNS_USERNAME and DNS_PASSWORD in your environment")
+			}
+			updateUrl = "https://iwantmyname.com/basicauth/ddns?hostname=" + domain
+			req, err = http.NewRequest("GET", updateUrl, nil)
+			if req != nil {
+				req.SetBasicAuth(dnsUsername, dnsPassword)
+			}
+			break
+
+		default:
+			if dnsPassword == "" || dnsUsername == "" {
+				log.Print("Warning: ddns url specified without username/password")
+			}
+
+			req, err = http.NewRequest("GET", updateUrl, nil)
+			if req != nil && dnsPassword != "" && dnsUsername != "" {
+				req.SetBasicAuth(dnsUsername, dnsPassword)
+			}
+		}
+
+		if err != nil {
+			log.Fatalf("ddns error: %v", err)
+		}
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Fatalf("ddns error: %v", err)
+		}
+
+		if resp.StatusCode != 200 {
+			log.Fatalf("ddns error: got http status code %v from api", resp.StatusCode)
+		}
+
+		go func() {
+			for {
+				time.Sleep(60 * time.Second)
+				resp, err := client.Do(req)
+				if err != nil {
+					log.Println("ddns error: %v", err)
+				}
+
+				if resp.StatusCode != 200 {
+					log.Println("ddns error: got http status code %v from api", resp.StatusCode)
+				}
+			}
+		}()
+	}
+
 	acme, err := acmewrapper.New(acmewrapper.Config{
-		Domains:          strings.Split(*domains, ","),
+		Domains:          []string{domain},
 		Address:          ":" + *port,
 		TLSCertFile:      *cert,
 		TLSKeyFile:       *key,
