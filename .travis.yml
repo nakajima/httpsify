@@ -12,6 +12,7 @@ env:
 script:
   - export GOOS=${_GOOS}
   - export GOARCH=${_GOARCH}
+  - '[ "${GOOS}" = "linux" ] && export CGO_ENABLED=0 || true'
   - go get -v
   - go build -v
 
