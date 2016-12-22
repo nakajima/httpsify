@@ -7,10 +7,11 @@ import (
 	"crypto/tls"
 	"flag"
 	"github.com/dkumor/acmewrapper"
-	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -50,6 +51,11 @@ func main() {
 	portNum, err := strconv.Atoi(*port)
 	if err != nil {
 		log.Fatalf("bogus port: %s", err)
+	}
+
+	backendUrl, err := url.Parse(*backend)
+	if err != nil {
+		log.Fatalf("bogus backend url: %s", err)
 	}
 
 	if *natfwd {
@@ -104,43 +110,20 @@ func main() {
 	if err != nil {
 		log.Fatal("err> " + err.Error())
 	}
+
+	reverseProxy := httputil.NewSingleHostReverseProxy(backendUrl)
 	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		req, err := http.NewRequest(r.Method, *backend+r.URL.RequestURI(), r.Body)
-		if err != nil {
-			http.Error(w, http.StatusText(504), 504)
-			return
-		}
-		for k, vs := range r.Header {
-			for _, v := range vs {
-				req.Header.Add(k, v)
-			}
-		}
 		uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
-		req.Host = r.Host
-		req.Header.Set("Host", r.Host)
-		req.Header.Set("X-Real-IP", uip)
-		req.Header.Set("X-Remote-IP", uip)
-		req.Header.Set("X-Remote-Port", uport)
-		req.Header.Set("X-Forwarded-For", uip)
-		req.Header.Set("X-Forwarded-Proto", "https")
-		req.Header.Set("X-Forwarded-Host", r.Host)
-		req.Header.Set("X-Forwarded-Port", *port)
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			http.Error(w, http.StatusText(504), 504)
-			return
-		}
-		defer res.Body.Close()
-		for k, vs := range res.Header {
-			for _, v := range vs {
-				w.Header().Add(k, v)
-			}
-		}
-		if *info == "yes" {
-			w.Header().Set("Server", version)
-		}
-		w.WriteHeader(res.StatusCode)
-		io.Copy(w, res.Body)
+
+		r.Host = r.Host
+		r.Header.Set("Host", r.Host)
+		r.Header.Set("X-Real-IP", uip)
+		r.Header.Set("X-Remote-IP", uip)
+		r.Header.Set("X-Remote-Port", uport)
+		r.Header.Set("X-Forwarded-For", uip)
+		r.Header.Set("X-Forwarded-Proto", "https")
+		r.Header.Set("X-Forwarded-Host", r.Host)
+		r.Header.Set("X-Forwarded-Port", *port)
+		reverseProxy.ServeHTTP(w, r)
 	})))
 }
