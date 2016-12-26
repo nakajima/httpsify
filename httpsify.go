@@ -6,6 +6,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"github.com/dkumor/acmewrapper"
 	"log"
 	"net"
@@ -24,7 +25,7 @@ import (
 
 // --------------
 
-const version = "httpsify/holepuncher/v1"
+const version = "httpsify/holepuncher/v2"
 
 var (
 	port       = flag.String("port", "4443", "the port that will serve the https requests")
@@ -34,45 +35,73 @@ var (
 	backend    = flag.String("backend", "http://127.0.0.1:80", "the backend http server that will serve the terminated requests")
 	info       = flag.String("info", "yes", "whether to send information about httpsify or not ^_^")
 	skipnatfwd = flag.Bool("skipnatfwd", false, "don't automatically setup a port forwarding rule on the upstream NAT router")
+	natfwd     = flag.String("natfwd", "default", "comma separated list of internal:external ports to map, defaults to opening port 443 to point to your https server")
 )
 
 // --------------
 
 var domain = ""
+var portsToMap = map[int]int{}
 
 func init() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 {
-		log.Fatalf("need to specify a domain name")
+		domain = ""
+	} else {
+		domain = args[0]
 	}
 
-	domain = args[0]
+	_, err := strconv.Atoi(*port)
+	if err != nil {
+		log.Fatalf("bogus port: %s", err)
+	}
+
+	if *skipnatfwd {
+		return
+	}
+
+	if *natfwd == "default" {
+		*natfwd = fmt.Sprintf("%s:443", *port)
+	}
+
+	for _, portRange := range strings.Split(*natfwd, ",") {
+		p := strings.Split(portRange, ":")
+		intPort, err := strconv.Atoi(p[0])
+		if err != nil {
+			log.Fatalf("bogus natfwd parameter: %v", err)
+			return
+		}
+		extPort, err := strconv.Atoi(p[1])
+		if err != nil {
+			log.Fatalf("bogus natfwd parameter: %v", err)
+			return
+		}
+		portsToMap[intPort] = extPort
+	}
 }
 
 // --------------
 
 func main() {
-	portNum, err := strconv.Atoi(*port)
-	if err != nil {
-		log.Fatalf("bogus port: %s", err)
-	}
-
 	backendUrl, err := url.Parse(*backend)
 	if err != nil {
 		log.Fatalf("bogus backend url: %s", err)
 	}
 
-	if !*skipnatfwd {
+	if len(portsToMap) > 0 {
 		gw, err := nat.DiscoverGateway()
 		if err != nil {
 			log.Fatalf("error: %s", err)
 		}
-
-		gw.DeletePortMapping("tcp", portNum, 443)
-		err = gw.AddPortMapping("tcp", portNum, 443, "https", 60*time.Second)
-		if err != nil {
-			log.Fatalf("error: %s", err)
+		log.Printf("Detected gateway type: %v\n", gw.Type())
+		for intPort, extPort := range portsToMap {
+			gw.DeletePortMapping("tcp", intPort, extPort)
+			err = gw.AddPortMapping("tcp", intPort, extPort, "httpsify", 60*time.Second)
+			if err != nil {
+				log.Fatalf("error: %s", err)
+			}
+			log.Printf("Mapped internal port %v to external port %v.\n", intPort, extPort)
 		}
 
 		// unmap the port if you ctrl-C or if we finish running main().
@@ -82,7 +111,9 @@ func main() {
 		signal.Notify(c, os.Interrupt)
 		go func() {
 			for _ = range c {
-				gw.DeletePortMapping("tcp", portNum, 443)
+				for intPort, extPort := range portsToMap {
+					gw.DeletePortMapping("tcp", intPort, extPort)
+				}
 				os.Exit(1)
 			}
 		}()
@@ -90,10 +121,11 @@ func main() {
 		go func() {
 			for {
 				time.Sleep(30 * time.Second)
-
-				err = gw.AddPortMapping("tcp", portNum, 443, "https", 60*time.Second)
-				if err != nil {
-					log.Fatalf("error: %s", err)
+				for intPort, extPort := range portsToMap {
+					err = gw.AddPortMapping("tcp", intPort, extPort, "httpsify", 60*time.Second)
+					if err != nil {
+						log.Printf("error: %s\n", err)
+					}
 				}
 			}
 		}()
@@ -171,36 +203,39 @@ func main() {
 		}()
 	}
 
-	acme, err := acmewrapper.New(acmewrapper.Config{
-		Domains:          []string{domain},
-		Address:          ":" + *port,
-		TLSCertFile:      *cert,
-		TLSKeyFile:       *key,
-		RegistrationFile: filepath.Dir(*cert) + "/lets-encrypt-user.reg",
-		PrivateKeyFile:   filepath.Dir(*cert) + "/lets-encrypt-user.pem",
-		TOSCallback:      acmewrapper.TOSAgree,
-	})
-	if err != nil {
-		log.Fatal("err> " + err.Error())
-	}
-	listener, err := tls.Listen("tcp", ":"+*port, acme.TLSConfig())
-	if err != nil {
-		log.Fatal("err> " + err.Error())
-	}
+	if domain != "" {
+		acme, err := acmewrapper.New(acmewrapper.Config{
+			Domains:          []string{domain},
+			Address:          ":" + *port,
+			TLSCertFile:      *cert,
+			TLSKeyFile:       *key,
+			RegistrationFile: filepath.Dir(*cert) + "/lets-encrypt-user.reg",
+			PrivateKeyFile:   filepath.Dir(*cert) + "/lets-encrypt-user.pem",
+			TOSCallback:      acmewrapper.TOSAgree,
+		})
+		if err != nil {
+			log.Fatal("err> " + err.Error())
+		}
+		listener, err := tls.Listen("tcp", ":"+*port, acme.TLSConfig())
+		if err != nil {
+			log.Fatal("err> " + err.Error())
+		}
 
-	reverseProxy := httputil.NewSingleHostReverseProxy(backendUrl)
-	log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
+		reverseProxy := httputil.NewSingleHostReverseProxy(backendUrl)
+		log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
 
-		r.Host = r.Host
-		r.Header.Set("Host", r.Host)
-		r.Header.Set("X-Real-IP", uip)
-		r.Header.Set("X-Remote-IP", uip)
-		r.Header.Set("X-Remote-Port", uport)
-		r.Header.Set("X-Forwarded-For", uip)
-		r.Header.Set("X-Forwarded-Proto", "https")
-		r.Header.Set("X-Forwarded-Host", r.Host)
-		r.Header.Set("X-Forwarded-Port", *port)
-		reverseProxy.ServeHTTP(w, r)
-	})))
+			r.Host = r.Host
+			r.Header.Set("Host", r.Host)
+			r.Header.Set("X-Real-IP", uip)
+			r.Header.Set("X-Remote-IP", uip)
+			r.Header.Set("X-Remote-Port", uport)
+			r.Header.Set("X-Forwarded-For", uip)
+			r.Header.Set("X-Forwarded-Proto", "https")
+			r.Header.Set("X-Forwarded-Host", r.Host)
+			r.Header.Set("X-Forwarded-Port", *port)
+			reverseProxy.ServeHTTP(w, r)
+		})))
+	}
+	select {}
 }
