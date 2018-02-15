@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/dkumor/acmewrapper"
 	"log"
 	"net"
 	"net/http"
@@ -19,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dkumor/acmewrapper"
 
 	"github.com/scottjg/go-nat"
 )
@@ -175,30 +176,25 @@ func main() {
 			}
 		}
 
-		if err != nil {
-			log.Fatalf("ddns error: %v", err)
-		}
 		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			log.Fatalf("ddns error: %v", err)
-		}
-
-		if resp.StatusCode != 200 {
-			log.Fatalf("ddns error: got http status code %v from api", resp.StatusCode)
-		}
 
 		go func() {
 			for {
-				time.Sleep(60 * time.Second)
 				resp, err := client.Do(req)
 				if err != nil {
-					log.Println("ddns error: %v", err)
+					log.Printf("ddns error: %v\n", err)
 				}
 
 				if resp.StatusCode != 200 {
-					log.Println("ddns error: got http status code %v from api", resp.StatusCode)
+					log.Printf("ddns error: got http status code %v from api\n", resp.StatusCode)
 				}
+
+				if resp.StatusCode == 429 {
+					log.Println("ddns rate limited. trying again in ten minutes")
+					time.Sleep(10 * time.Minute)
+				}
+
+				time.Sleep(60 * time.Second)
 			}
 		}()
 	}
@@ -225,7 +221,6 @@ func main() {
 		log.Fatal(http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			uip, uport, _ := net.SplitHostPort(r.RemoteAddr)
 
-			r.Host = r.Host
 			r.Header.Set("Host", r.Host)
 			r.Header.Set("X-Real-IP", uip)
 			r.Header.Set("X-Remote-IP", uip)
