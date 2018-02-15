@@ -182,16 +182,16 @@ func main() {
 			for {
 				resp, err := client.Do(req)
 				if err != nil {
-					log.Printf("ddns error: %v\n", err)
+					log.Fatalf("ddns error: %v\n", err)
 				}
 
 				if resp.StatusCode != 200 {
-					log.Printf("ddns error: got http status code %v from api\n", resp.StatusCode)
-				}
-
-				if resp.StatusCode == 429 {
-					log.Println("ddns rate limited. trying again in ten minutes")
-					time.Sleep(10 * time.Minute)
+					if resp.StatusCode == 429 {
+						log.Println("ddns rate limited. trying again in ten minutes")
+						time.Sleep(10 * time.Minute)
+					} else {
+						log.Fatalf("ddns error: got http status code %v from api\n", resp.StatusCode)
+					}
 				}
 
 				time.Sleep(60 * time.Second)
